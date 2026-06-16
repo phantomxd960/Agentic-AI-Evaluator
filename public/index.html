@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic GradeAI | Employee Work Evaluator</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Neon Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="logo-text">Grade<span>AI</span></span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button id="nav-btn-employee" class="nav-item active">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Employee Portal</span>
+        </button>
+        <button id="nav-btn-hr" class="nav-item">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span>HR Dashboard</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator-container">
+          <span class="status-dot"></span>
+          <span id="api-status-text">Gemini Agent Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Employee Portal Section -->
+      <section id="section-employee" class="portal-section active">
+        <header class="section-header">
+          <div>
+            <h1>Employee Portal</h1>
+            <p class="subtitle">Submit your solution and collaborate with our AI Evaluator to finalize your grade.</p>
+          </div>
+        </header>
+
+        <div class="employee-grid">
+          <!-- Left Column: Assignment Selection & Description -->
+          <div class="grid-card selection-card">
+            <h2>Select Assignment</h2>
+            <div class="select-wrapper">
+              <select id="employee-assignment-select" class="form-select">
+                <option value="" disabled selected>Loading active assignments...</option>
+              </select>
+            </div>
+
+            <div id="employee-assignment-details" class="assignment-details-box hidden">
+              <h3 id="employee-assignment-title" class="details-title"></h3>
+              <div id="employee-assignment-description" class="details-description"></div>
+            </div>
+          </div>
+
+          <!-- Right Column: Submission Console -->
+          <div class="grid-card submission-card">
+            <h2>Submission Console</h2>
+            
+            <!-- State 1: Upload Solution -->
+            <div id="employee-state-upload" class="console-state">
+              <p class="console-desc">Upload your solution files (code, PDF, DOCX, etc.). The AI agent will read and analyze them to formulate questions.</p>
+              
+              <form id="submission-upload-form" class="upload-form">
+                <div class="form-group">
+                  <label for="employee-name-input">Your Full Name</label>
+                  <input type="text" id="employee-name-input" class="form-input" placeholder="e.g. John Doe" required>
+                </div>
+                
+                <div id="drop-zone" class="drop-zone">
+                  <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="upload-icon">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <p class="drop-text">Drag & drop your files here or <span class="browse-link">browse</span></p>
+                  <p class="drop-subtext">Supported formats: PDF, DOCX, TXT, JS, PY, HTML, CSS, etc. (Max 10 files)</p>
+                  <input type="file" id="file-input" multiple class="hidden">
+                </div>
+
+                <div id="selected-files-list" class="selected-files-list hidden">
+                  <h4>Selected Files:</h4>
+                  <ul id="files-list-container"></ul>
+                </div>
+
+                <button type="submit" id="btn-submit-solution" class="btn btn-primary" disabled>
+                  <span>Submit to AI Evaluator</span>
+                  <div class="loader hidden" id="upload-loader"></div>
+                </button>
+              </form>
+            </div>
+
+            <!-- State 2: Interactive Chat Evaluation -->
+            <div id="employee-state-chat" class="console-state hidden">
+              <div class="chat-workspace">
+                <div class="chat-info-sidebar">
+                  <div class="info-group">
+                    <span class="info-label">Status</span>
+                    <span id="employee-submission-status" class="status-badge status-reviewing">Reviewing</span>
+                  </div>
+                  <div class="info-group">
+                    <span class="info-label">Candidate</span>
+                    <span id="employee-display-name" class="info-value">John Doe</span>
+                  </div>
+                  <div class="info-group">
+                    <span class="info-label">Uploaded Files</span>
+                    <ul id="employee-display-files" class="info-files-list"></ul>
+                  </div>
+
+                  <div class="chat-sidebar-action">
+                    <button id="btn-employee-finalize" class="btn btn-accent btn-block pulse-animation">
+                      <span>Request Final Grading</span>
+                    </button>
+                    <p class="finalize-hint">Click when you have fully explained your choices and are ready for grading.</p>
+                  </div>
+                </div>
+
+                <div class="chat-area">
+                  <div id="chat-messages" class="chat-messages">
+                    <!-- Dynamic chat messages go here -->
+                  </div>
+                  
+                  <div class="chat-input-bar">
+                    <textarea id="chat-input-text" class="chat-input" placeholder="Explain your design decisions..." rows="1"></textarea>
+                    <button id="btn-chat-send" class="btn-chat-send">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- State 3: Final Graded Evaluation -->
+            <div id="employee-state-graded" class="console-state hidden">
+              <div class="grade-card-report">
+                <div class="grade-report-header">
+                  <div class="grade-badge-container">
+                    <span class="grade-label">Grade</span>
+                    <span id="employee-final-grade" class="grade-letter">A</span>
+                  </div>
+                  <div class="report-meta">
+                    <h3>Evaluation Report</h3>
+                    <p>Generated by GradeAI Agent</p>
+                    <span class="status-badge status-graded">Graded</span>
+                  </div>
+                </div>
+                
+                <div class="report-divider"></div>
+
+                <div id="employee-final-feedback" class="report-feedback markdown-body">
+                  <!-- AI feedback report (Markdown) -->
+                </div>
+
+                <div class="report-footer-actions">
+                  <button id="btn-restart-submission" class="btn btn-secondary">
+                    <span>Submit New Attempt</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- HR Dashboard Section -->
+      <section id="section-hr" class="portal-section hidden">
+        <header class="section-header">
+          <div>
+            <h1>HR Evaluation Hub</h1>
+            <p class="subtitle">Publish problem statements and track employee submissions, interactive chats, and grading reports.</p>
+          </div>
+          <button id="btn-new-assignment" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>New Assignment</span>
+          </button>
+        </header>
+
+        <!-- Stats Overview Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-submissions">0</div>
+            <div class="stat-label">Total Submissions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-amber" id="stat-pending-clarifications">0</div>
+            <div class="stat-label">Pending Clarifications</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-green" id="stat-graded">0</div>
+            <div class="stat-label">Graded Submissions</div>
+          </div>
+        </div>
+
+        <!-- Submissions Log -->
+        <div class="grid-card full-width">
+          <h2>Candidate Submission Log</h2>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Assignment</th>
+                  <th>Submitted Date</th>
+                  <th>Evaluation Status</th>
+                  <th>Final Grade</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="hr-submissions-tbody">
+                <tr>
+                  <td colspan="6" class="text-center table-empty">Loading submission log...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal: Create New Assignment -->
+  <div id="modal-assignment" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Publish New Assignment</h2>
+        <button id="btn-close-modal" class="btn-close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="assignment-creation-form" class="modal-form">
+        <div class="form-group">
+          <label for="assignment-title-input">Assignment Title</label>
+          <input type="text" id="assignment-title-input" class="form-input" placeholder="e.g. Design a Banking Transactions Page" required>
+        </div>
+        <div class="form-group">
+          <label for="assignment-desc-input">Problem Statement & Rubric Criteria</label>
+          <textarea id="assignment-desc-input" class="form-input" rows="8" placeholder="Provide a detailed description of the problem statement and what criteria the solution must satisfy..." required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Publish Problem Statement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sliding Review Drawer for HR -->
+  <div id="drawer-review" class="drawer-overlay hidden">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div>
+          <h2 id="drawer-candidate-name">Candidate Name</h2>
+          <p id="drawer-assignment-title" class="drawer-subtitle">Assignment Title</p>
+        </div>
+        <button id="btn-close-drawer" class="btn-close">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Tab Navigation inside drawer -->
+        <div class="drawer-tabs">
+          <button id="tab-btn-transcript" class="tab-btn active">Discussion Transcript</button>
+          <button id="tab-btn-report" class="tab-btn">AI Grading Report</button>
+        </div>
+
+        <div class="drawer-tab-content">
+          <!-- Tab 1: Discussion Transcript -->
+          <div id="tab-content-transcript" class="drawer-tab-pane active">
+            <div id="drawer-chat-log" class="drawer-chat-log">
+              <!-- Transcript messages -->
+            </div>
+          </div>
+
+          <!-- Tab 2: AI Grading Report -->
+          <div id="tab-content-report" class="drawer-tab-pane">
+            <div class="report-meta-box">
+              <div class="grade-score-pill">
+                <span class="label">Grade</span>
+                <span id="drawer-grade-display" class="grade-val">A</span>
+              </div>
+              <div class="info-block">
+                <div>Status: <span id="drawer-status-badge" class="status-badge">Reviewing</span></div>
+                <div class="date-field">Submitted on <span id="drawer-date-display">June 11, 2026</span></div>
+              </div>
+            </div>
+            
+            <div id="drawer-report-feedback" class="report-feedback markdown-body">
+              <!-- AI Feedback Report Markdown -->
+            </div>
+
+            <div id="drawer-grading-actions" class="drawer-grading-actions hidden">
+              <button id="btn-drawer-force-grade" class="btn btn-accent pulse-animation">
+                <span>Trigger AI Grading Now</span>
+              </button>
+              <p class="action-hint">This will force the AI agent to immediately grade the submission based on the conversation so far.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Markdown parser library (fallback to simple parser if loading fails, but let's include it for formatting) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- JavaScript controllers -->
+  <script src="app.js" type="module"></script>
+</body>
+</html>
