@@ -28,22 +28,37 @@ async function callGemini(systemInstruction, promptContent) {
     throw new Error('Gemini API key not configured.');
   }
 
-  try {
-    const response = await aiClient.models.generateContent({
-      model: MODEL_NAME,
-      contents: promptContent,
-      config: {
-        responseMimeType: 'application/json',
-        systemInstruction: systemInstruction,
-        temperature: 0.2,
-      }
-    });
+  const maxRetries = 3;
+  let delay = 1000;
 
-    const text = response.text;
-    return JSON.parse(text);
-  } catch (err) {
-    console.error('Gemini API Call failed:', err);
-    throw err;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await aiClient.models.generateContent({
+        model: MODEL_NAME,
+        contents: promptContent,
+        config: {
+          responseMimeType: 'application/json',
+          systemInstruction: systemInstruction,
+          temperature: 0.2,
+        }
+      });
+
+      const text = response.text;
+      return JSON.parse(text);
+    } catch (err) {
+      console.error(`Gemini API Call failed (attempt ${attempt}/${maxRetries}):`, err.message || err);
+      
+      const isTransient = err.status === 503 || err.status === 429 || 
+                          (err.message && (err.message.includes('503') || err.message.includes('temporary') || err.message.includes('demand') || err.message.includes('429')));
+      
+      if (isTransient && attempt < maxRetries) {
+        console.warn(`[Gemini API] Transient error detected. Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2.5; // Exponential backoff (1s -> 2.5s)
+      } else {
+        throw err;
+      }
+    }
   }
 }
 
