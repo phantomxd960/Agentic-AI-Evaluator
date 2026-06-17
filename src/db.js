@@ -72,7 +72,18 @@ async function initDb() {
           'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
           ['hr@company.com', defaultHash, 'hr']
         );
-        console.log('Seeded default HR admin account into Neon Postgres.');
+        
+        // Seed default Employee accounts
+        const empPasswordHash = hashPassword('password123');
+        const defaultEmployees = ['vijay', 'jane', 'john'];
+        for (const emp of defaultEmployees) {
+          await pool.query(
+            'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [emp, empPasswordHash, 'employee']
+          );
+        }
+        
+        console.log('Seeded default HR admin and employee accounts into Neon Postgres.');
       }
 
       console.log('Neon PostgreSQL tables verified/created successfully.');
@@ -120,7 +131,25 @@ function setupLocalJsonDb() {
       role: 'hr'
     });
     needsWrite = true;
-    console.log('Seeded default HR admin account into local JSON database.');
+  }
+
+  // Seed default Employee accounts in JSON
+  const defaultEmployees = ['vijay', 'jane', 'john'];
+  const empHash = hashPassword('password123');
+  defaultEmployees.forEach(emp => {
+    const empExists = data.users.some(u => u.username === emp);
+    if (!empExists) {
+      data.users.push({
+        username: emp,
+        password_hash: empHash,
+        role: 'employee'
+      });
+      needsWrite = true;
+    }
+  });
+
+  if (needsWrite) {
+    console.log('Seeded default HR and Employee accounts into local JSON database.');
   }
 
   if (needsWrite) {
