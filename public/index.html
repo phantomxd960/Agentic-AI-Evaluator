@@ -12,6 +12,67 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  
+  <!-- Glassmorphic Login Overlay Screen -->
+  <div id="login-overlay" class="login-overlay active">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="logo-text">Grade<span>AI</span> Portal</span>
+      </div>
+      
+      <div class="login-tabs">
+        <button id="tab-login-employee" class="login-tab-btn active">Employee Login</button>
+        <button id="tab-login-hr" class="login-tab-btn">HR Admin Portal</button>
+      </div>
+
+      <!-- Employee Panel (Login / Register Toggle) -->
+      <div id="panel-employee-login" class="login-panel active">
+        <form id="form-employee-auth" class="auth-form">
+          <div class="form-group">
+            <label for="input-emp-username">Employee Username</label>
+            <input type="text" id="input-emp-username" class="form-input" placeholder="e.g. johndoe" required>
+          </div>
+          <div class="form-group">
+            <label for="input-emp-password">Password</label>
+            <input type="password" id="input-emp-password" class="form-input" placeholder="Enter password" required>
+          </div>
+          
+          <div class="auth-toggle-hint">
+            <span id="auth-hint-text">New candidate?</span> 
+            <a href="#" id="link-toggle-register" class="browse-link">Register Account</a>
+          </div>
+
+          <button type="submit" id="btn-employee-auth-submit" class="btn btn-primary btn-block">
+            <span>Log In</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- HR Panel -->
+      <div id="panel-hr-login" class="login-panel">
+        <form id="form-hr-auth" class="auth-form">
+          <div class="form-group">
+            <label for="input-hr-email">HR Administrator Email</label>
+            <input type="email" id="input-hr-email" class="form-input" placeholder="hr@company.com" required>
+          </div>
+          <div class="form-group">
+            <label for="input-hr-password">Password</label>
+            <input type="password" id="input-hr-password" class="form-input" placeholder="Enter HR password" required>
+          </div>
+          
+          <button type="submit" class="btn btn-accent btn-block" style="margin-top:20px;">
+            <span>Access HR Dashboard</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Neon Sidebar -->
     <aside class="sidebar">
@@ -25,14 +86,14 @@
       </div>
 
       <nav class="sidebar-nav">
-        <button id="nav-btn-employee" class="nav-item active">
+        <button id="nav-btn-employee" class="nav-item active hidden">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
           <span>Employee Portal</span>
         </button>
-        <button id="nav-btn-hr" class="nav-item">
+        <button id="nav-btn-hr" class="nav-item hidden">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/>
@@ -42,6 +103,24 @@
           <span>HR Dashboard</span>
         </button>
       </nav>
+
+      <div class="sidebar-user-profile hidden" id="sidebar-profile-box">
+        <div class="profile-avatar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div class="profile-details">
+          <span class="profile-name" id="user-display-name">Username</span>
+          <span class="profile-role" id="user-display-role">Role</span>
+        </div>
+        <button id="btn-logout" class="btn-logout" title="Log Out">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
+      </div>
 
       <div class="sidebar-footer">
         <div class="status-indicator-container">
@@ -341,7 +420,7 @@
     </div>
   </div>
 
-  <!-- Markdown parser library (fallback to simple parser if loading fails, but let's include it for formatting) -->
+  <!-- Markdown parser library -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
   <!-- JavaScript controllers -->

@@ -1,10 +1,10 @@
 // Employee Portal Controller
 import { simpleMarkdownParser } from './hr.js';
+import { getAuthHeaders, getCurrentUser } from './app.js';
 
 let api = null;
 let selectedFiles = [];
 let activeSubmission = null;
-let chatPollingInterval = null;
 
 export function initEmployee(apiHelper) {
   api = apiHelper;
@@ -106,6 +106,13 @@ async function handleAssignmentSelect(e) {
     // Reset selection file state
     selectedFiles = [];
     renderFilesList();
+    
+    // Autofill name from current user session
+    const user = getCurrentUser();
+    if (user) {
+      document.getElementById('employee-name-input').value = user.username;
+    }
+    
     validateForm();
     
     // Check if employee already has a submission for this assignment
@@ -116,24 +123,20 @@ async function handleAssignmentSelect(e) {
 }
 
 // Check if there is already a submission for the current candidate name and assignment
-// For demo/dev purposes, we'll let users check their active submission if one exists in database.
 async function checkActiveSubmission(assignmentId) {
   try {
     const subs = await api.get(`/api/submissions?assignmentId=${assignmentId}`);
     
-    // Since we don't have login, let's see if there is any submission, or let the user create a new one.
-    // If there is a submission, we can restore it. To keep it simple, we just allow submitting new ones,
-    // but if the employee names match, we can restore. Let's let the user submit brand new files first.
-    // However, if we are in the middle of a chat session, we want to stay there.
-    // For this single-user local prototype, if there are existing submissions, we can bind to the latest one.
     if (subs.length > 0) {
       // Find latest submission
       const latest = subs[0];
-      if (latest.status !== 'Graded') {
-        // Restore active chat session
-        activeSubmission = latest;
-        transitionToConsoleState(latest);
-      }
+      activeSubmission = latest;
+      transitionToConsoleState(latest);
+    } else {
+      // Show upload state
+      document.getElementById('employee-state-upload').classList.remove('hidden');
+      document.getElementById('employee-state-chat').classList.add('hidden');
+      document.getElementById('employee-state-graded').classList.add('hidden');
     }
   } catch (err) {
     console.log('No active submission to restore.', err);
@@ -182,7 +185,6 @@ function renderFilesList() {
     const li = document.createElement('li');
     li.className = 'selected-file-item';
     
-    // Convert size to readable format
     const sizeKB = (file.size / 1024).toFixed(1);
     
     li.innerHTML = `
@@ -241,8 +243,12 @@ async function handleUploadSubmit(e) {
   });
 
   try {
+    // Perform file upload with security authorization headers
     const response = await fetch('/api/submissions', {
       method: 'POST',
+      headers: {
+        ...getAuthHeaders()
+      },
       body: formData
     });
     
@@ -257,7 +263,7 @@ async function handleUploadSubmit(e) {
     // Transition UI
     transitionToConsoleState(submission);
     
-    // Update HR stats in background if loaded
+    // Notify stats reload
     window.dispatchEvent(new CustomEvent('submission-made'));
   } catch (err) {
     alert('AI Analysis failed. Make sure your GEMINI_API_KEY is configured in your .env file!\n\nDetails: ' + err.message);
@@ -449,16 +455,18 @@ function restartSubmissionPortal() {
   activeSubmission = null;
   selectedFiles = [];
   
-  // Clear name input
-  document.getElementById('employee-name-input').value = '';
+  // Clear forms
   document.getElementById('submission-upload-form').reset();
   
   // Clear file lists
   renderFilesList();
   
-  // Reset assignment select
+  // Reset assignment details
+  const detailsBox = document.getElementById('employee-assignment-details');
+  detailsBox.classList.add('hidden');
+  
+  // Reset dropdown
   document.getElementById('employee-assignment-select').value = '';
-  document.getElementById('employee-assignment-details').classList.add('hidden');
   
   // Reset UI back to upload state
   document.getElementById('employee-state-upload').classList.remove('hidden');

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -13,6 +14,11 @@ let pool = null;
 const JSON_DB_DIR = path.resolve('data');
 const JSON_DB_PATH = path.join(JSON_DB_DIR, 'db.json');
 
+// SHA-256 password hashing helper
+export function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
 // Initialize database
 async function initDb() {
   if (USE_POSTGRES) {
@@ -23,7 +29,16 @@ async function initDb() {
         ssl: { rejectUnauthorized: false } // Required for Neon
       });
 
-      // Create tables if they do not exist
+      // Create users table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          username VARCHAR(50) PRIMARY KEY,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(20) NOT NULL
+        );
+      `);
+
+      // Create assignments table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS assignments (
           id VARCHAR(50) PRIMARY KEY,
@@ -33,11 +48,13 @@ async function initDb() {
         );
       `);
 
+      // Create submissions table (updated to link to users table)
       await pool.query(`
         CREATE TABLE IF NOT EXISTS submissions (
           id VARCHAR(50) PRIMARY KEY,
           assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
           employee_name VARCHAR(255) NOT NULL,
+          employee_username VARCHAR(50) REFERENCES users(username) ON DELETE SET NULL,
           file_paths TEXT NOT NULL,
           status VARCHAR(50) NOT NULL,
           chat_history TEXT NOT NULL,
@@ -46,6 +63,17 @@ async function initDb() {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
+
+      // Seed default HR account if not exists
+      const hrUser = await pool.query('SELECT * FROM users WHERE username = $1', ['hr@company.com']);
+      if (hrUser.rows.length === 0) {
+        const defaultHash = hashPassword('admin123');
+        await pool.query(
+          'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
+          ['hr@company.com', defaultHash, 'hr']
+        );
+        console.log('Seeded default HR admin account into Neon Postgres.');
+      }
 
       console.log('Neon PostgreSQL tables verified/created successfully.');
     } catch (err) {
@@ -62,10 +90,43 @@ function setupLocalJsonDb() {
   if (!fs.existsSync(JSON_DB_DIR)) {
     fs.mkdirSync(JSON_DB_DIR, { recursive: true });
   }
-  if (!fs.existsSync(JSON_DB_PATH)) {
-    fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ assignments: [], submissions: [] }, null, 2));
-    console.log('Initialized local JSON database at:', JSON_DB_PATH);
+  
+  let needsWrite = false;
+  let data = { users: [], assignments: [], submissions: [] };
+
+  if (fs.existsSync(JSON_DB_PATH)) {
+    try {
+      const fileContent = fs.readFileSync(JSON_DB_PATH, 'utf8');
+      data = JSON.parse(fileContent);
+      // Ensure users key exists for legacy databases
+      if (!data.users) {
+        data.users = [];
+        needsWrite = true;
+      }
+    } catch (err) {
+      console.error('Error parsing local db, recreating structure:', err);
+      needsWrite = true;
+    }
+  } else {
+    needsWrite = true;
   }
+
+  // Seed default HR account in JSON
+  const hrExists = data.users.some(u => u.username === 'hr@company.com');
+  if (!hrExists) {
+    data.users.push({
+      username: 'hr@company.com',
+      password_hash: hashPassword('admin123'),
+      role: 'hr'
+    });
+    needsWrite = true;
+    console.log('Seeded default HR admin account into local JSON database.');
+  }
+
+  if (needsWrite) {
+    fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2));
+  }
+  console.log('Initialized local JSON database at:', JSON_DB_PATH);
 }
 
 // Read local JSON file database helper
@@ -75,7 +136,7 @@ function readJsonDb() {
     return JSON.parse(data);
   } catch (err) {
     console.error('Error reading JSON database, returning empty schema.', err);
-    return { assignments: [], submissions: [] };
+    return { users: [], assignments: [], submissions: [] };
   }
 }
 
@@ -98,6 +159,39 @@ function generateId() {
 export const db = {
   // Initialize Database
   init: initDb,
+
+  // Users CRUD
+  async createUser(username, password, role) {
+    const passwordHash = hashPassword(password);
+    if (pool) {
+      const query = `
+        INSERT INTO users (username, password_hash, role)
+        VALUES ($1, $2, $3)
+        RETURNING username, role
+      `;
+      const res = await pool.query(query, [username, passwordHash, role]);
+      return res.rows[0];
+    } else {
+      const dbData = readJsonDb();
+      if (dbData.users.some(u => u.username === username)) {
+        throw new Error('Username already exists');
+      }
+      const newUser = { username, password_hash: passwordHash, role };
+      dbData.users.push(newUser);
+      writeJsonDb(dbData);
+      return { username, role };
+    }
+  },
+
+  async getUser(username) {
+    if (pool) {
+      const res = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+      return res.rows[0] || null;
+    } else {
+      const dbData = readJsonDb();
+      return dbData.users.find(u => u.username === username) || null;
+    }
+  },
 
   // Assignments CRUD
   async createAssignment(title, description) {
@@ -142,7 +236,7 @@ export const db = {
   },
 
   // Submissions CRUD
-  async createSubmission(assignmentId, employeeName, filePaths) {
+  async createSubmission(assignmentId, employeeName, employeeUsername, filePaths) {
     const id = generateId();
     const createdAt = new Date().toISOString();
     const status = 'Reviewing';
@@ -151,11 +245,11 @@ export const db = {
 
     if (pool) {
       const query = `
-        INSERT INTO submissions (id, assignment_id, employee_name, file_paths, status, chat_history, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO submissions (id, assignment_id, employee_name, employee_username, file_paths, status, chat_history, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `;
-      const res = await pool.query(query, [id, assignmentId, employeeName, filesStr, status, chatHistory, createdAt]);
+      const res = await pool.query(query, [id, assignmentId, employeeName, employeeUsername, filesStr, status, chatHistory, createdAt]);
       const row = res.rows[0];
       return {
         ...row,
@@ -168,6 +262,7 @@ export const db = {
         id,
         assignment_id: assignmentId,
         employee_name: employeeName,
+        employee_username: employeeUsername,
         file_paths: filePaths,
         status,
         chat_history: [],
@@ -181,14 +276,26 @@ export const db = {
     }
   },
 
-  async getSubmissions(assignmentId = null) {
+  async getSubmissions(assignmentId = null, employeeUsername = null) {
     if (pool) {
-      let query = 'SELECT * FROM submissions ORDER BY created_at DESC';
+      let query = 'SELECT * FROM submissions';
+      let conditions = [];
       let params = [];
+
       if (assignmentId) {
-        query = 'SELECT * FROM submissions WHERE assignment_id = $1 ORDER BY created_at DESC';
-        params = [assignmentId];
+        params.push(assignmentId);
+        conditions.push(`assignment_id = $${params.length}`);
       }
+      if (employeeUsername) {
+        params.push(employeeUsername);
+        conditions.push(`employee_username = $${params.length}`);
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+      query += ' ORDER BY created_at DESC';
+
       const res = await pool.query(query, params);
       return res.rows.map(row => ({
         ...row,
@@ -200,6 +307,9 @@ export const db = {
       let submissions = dbData.submissions;
       if (assignmentId) {
         submissions = submissions.filter(s => s.assignment_id === assignmentId);
+      }
+      if (employeeUsername) {
+        submissions = submissions.filter(s => s.employee_username === employeeUsername);
       }
       return [...submissions].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }

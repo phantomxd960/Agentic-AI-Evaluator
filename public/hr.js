@@ -1,4 +1,5 @@
 // HR view controller
+import { getAuthHeaders } from './app.js';
 
 let api = null;
 let currentSubmission = null;
@@ -7,19 +8,32 @@ let currentSubmission = null;
 export function initHR(apiHelper) {
   api = apiHelper;
 
-  // Event Listeners
-  document.getElementById('btn-new-assignment').addEventListener('click', openAssignmentModal);
-  document.getElementById('btn-close-modal').addEventListener('click', closeAssignmentModal);
-  document.getElementById('btn-cancel-modal').addEventListener('click', closeAssignmentModal);
-  document.getElementById('assignment-creation-form').addEventListener('submit', handleCreateAssignment);
+  // Event Listeners for Assignment Creation Modal
+  const btnNew = document.getElementById('btn-new-assignment');
+  if (btnNew) btnNew.addEventListener('click', openAssignmentModal);
+  
+  const btnClose = document.getElementById('btn-close-modal');
+  if (btnClose) btnClose.addEventListener('click', closeAssignmentModal);
+  
+  const btnCancel = document.getElementById('btn-cancel-modal');
+  if (btnCancel) btnCancel.addEventListener('click', closeAssignmentModal);
+  
+  const formCreate = document.getElementById('assignment-creation-form');
+  if (formCreate) formCreate.addEventListener('submit', handleCreateAssignment);
   
   // Drawer events
-  document.getElementById('btn-close-drawer').addEventListener('click', closeReviewDrawer);
-  document.getElementById('tab-btn-transcript').addEventListener('click', () => switchDrawerTab('transcript'));
-  document.getElementById('tab-btn-report').addEventListener('click', () => switchDrawerTab('report'));
+  const btnCloseDrawer = document.getElementById('btn-close-drawer');
+  if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', closeReviewDrawer);
+  
+  const tabTranscript = document.getElementById('tab-btn-transcript');
+  if (tabTranscript) tabTranscript.addEventListener('click', () => switchDrawerTab('transcript'));
+  
+  const tabReport = document.getElementById('tab-btn-report');
+  if (tabReport) tabReport.addEventListener('click', () => switchDrawerTab('report'));
   
   // Force grading action in drawer
-  document.getElementById('btn-drawer-force-grade').addEventListener('click', handleForceGrading);
+  const btnForceGrade = document.getElementById('btn-drawer-force-grade');
+  if (btnForceGrade) btnForceGrade.addEventListener('click', handleForceGrading);
 }
 
 // Load HR Dashboard data
@@ -58,9 +72,6 @@ function renderSubmissionsTable(submissions) {
   }
 
   tbody.innerHTML = '';
-  
-  // Cache assignments mapping to titles
-  const assignmentMap = {};
 
   submissions.forEach(sub => {
     const tr = document.createElement('tr');
@@ -94,7 +105,6 @@ function renderSubmissionsTable(submissions) {
 
     // Row click opens drawer
     tr.addEventListener('click', (e) => {
-      // Don't open if clicked specifically on the button (which also triggers)
       if (e.target.tagName !== 'BUTTON') {
         openReviewDrawer(sub.id);
       }
@@ -141,18 +151,36 @@ function closeAssignmentModal() {
 
 async function handleCreateAssignment(e) {
   e.preventDefault();
-  const title = document.getElementById('assignment-title-input').value;
-  const description = document.getElementById('assignment-desc-input').value;
+  
+  const titleInput = document.getElementById('assignment-title-input');
+  const descInput = document.getElementById('assignment-desc-input');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  const title = titleInput.value.trim();
+  const description = descInput.value.trim();
+
+  if (!title || !description) return;
+
+  const oldText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="loader"></span> <span>Publishing...</span>';
 
   try {
     await api.post('/api/assignments', { title, description });
+    
     closeAssignmentModal();
-    // Dispatch event to update assignment selectors
+    console.log('Assignment published successfully:', title);
+    
+    // Dispatch event to update employee selectors
     window.dispatchEvent(new CustomEvent('assignment-created'));
-    // Refresh stats if in HR view
-    loadHRDashboard();
+    
+    // Refresh HR dashboard logs
+    await loadHRDashboard();
   } catch (err) {
     alert('Failed to publish problem statement: ' + err.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = oldText;
   }
 }
 
@@ -209,7 +237,6 @@ async function openReviewDrawer(submissionId) {
       gradeDisplay.textContent = sub.grade;
       gradeDisplay.parentElement.style.display = 'flex';
       
-      // Use marked library if loaded, fallback to simple parser
       if (window.marked && window.marked.parse) {
         reportFeedback.innerHTML = window.marked.parse(sub.feedback);
       } else {
@@ -278,7 +305,6 @@ function renderDrawerTranscript(chatHistory) {
     container.appendChild(bubbleContainer);
   });
   
-  // scroll to bottom
   container.scrollTop = container.scrollHeight;
 }
 
@@ -293,7 +319,6 @@ async function handleForceGrading() {
 
   try {
     const updatedSub = await api.post(`/api/submissions/${currentSubmission.id}/finalize`);
-    // Refresh display
     openReviewDrawer(updatedSub.id);
     loadHRDashboard();
   } catch (err) {
@@ -307,17 +332,12 @@ async function handleForceGrading() {
 export function simpleMarkdownParser(markdownText) {
   if (!markdownText) return '';
   let html = markdownText
-    // Headings
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-    // Bold
     .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-    // Bullet points
     .replace(/^\- (.*$)/gim, '<li>$1</li>');
   
-  // Wrap list items in <ul>
   html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
-  // Paragraphs
   html = html.replace(/([^>\r\n]+?)(\r\n|\n)/gim, '<p>$1</p>');
   
   return html;

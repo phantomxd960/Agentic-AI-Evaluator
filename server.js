@@ -5,7 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { db } from './src/db.js';
+import { db, hashPassword } from './src/db.js';
 import { aiService } from './src/ai.js';
 import { compileSubmissionContent } from './src/extractor.js';
 
@@ -44,6 +44,60 @@ const upload = multer({ storage: storage });
 // Initialize database before setting up routes
 await db.init();
 
+// --- AUTH API ENDPOINTS ---
+
+// Register employee
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
+    const cleanUsername = username.trim().toLowerCase();
+    const existingUser = await db.getUser(cleanUsername);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+
+    const newUser = await db.createUser(cleanUsername, password, 'employee');
+    res.status(201).json({ username: newUser.username, role: newUser.role });
+  } catch (err) {
+    console.error('Error during registration:', err);
+    res.status(500).json({ error: 'Registration failed: ' + err.message });
+  }
+});
+
+// Login (Employee & HR)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const user = await db.getUser(cleanUsername);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    const inputHash = hashPassword(password);
+    if (inputHash !== user.password_hash) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    res.json({
+      username: user.username,
+      role: user.role
+    });
+  } catch (err) {
+    console.error('Error during login:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+
 // --- REST API ENDPOINTS ---
 
 // 1. Assignments
@@ -72,6 +126,12 @@ app.get('/api/assignments/:id', async (req, res) => {
 
 app.post('/api/assignments', async (req, res) => {
   try {
+    // HR Authorization Filter
+    const userRole = req.headers['x-user-role'];
+    if (userRole !== 'hr') {
+      return res.status(403).json({ error: 'Forbidden: Only HR administrators can publish assignments.' });
+    }
+
     const { title, description } = req.body;
     if (!title || !description) {
       return res.status(400).json({ error: 'Title and description are required' });
@@ -88,7 +148,17 @@ app.post('/api/assignments', async (req, res) => {
 app.get('/api/submissions', async (req, res) => {
   try {
     const assignmentId = req.query.assignmentId || null;
-    const list = await db.getSubmissions(assignmentId);
+    
+    // Auth Filtering
+    const userRole = req.headers['x-user-role'];
+    const username = req.headers['x-username'];
+    
+    let filterUsername = null;
+    if (userRole === 'employee') {
+      filterUsername = username; // Employees can ONLY see their own submissions
+    }
+
+    const list = await db.getSubmissions(assignmentId, filterUsername);
     res.json(list);
   } catch (err) {
     console.error('Error fetching submissions:', err);
@@ -102,6 +172,14 @@ app.get('/api/submissions/:id', async (req, res) => {
     if (!submission) {
       return res.status(404).json({ error: 'Submission not found' });
     }
+
+    // Auth Filtering: Employees cannot view other candidate submissions
+    const userRole = req.headers['x-user-role'];
+    const username = req.headers['x-username'];
+    if (userRole === 'employee' && submission.employee_username !== username) {
+      return res.status(403).json({ error: 'Access Denied: You cannot view this submission.' });
+    }
+
     res.json(submission);
   } catch (err) {
     console.error('Error fetching submission:', err);
@@ -113,8 +191,14 @@ app.get('/api/submissions/:id', async (req, res) => {
 app.post('/api/submissions', upload.array('files'), async (req, res) => {
   try {
     const { assignmentId, employeeName } = req.body;
+    const employeeUsername = req.headers['x-username'] || req.body.employeeUsername;
+
     if (!assignmentId || !employeeName) {
       return res.status(400).json({ error: 'assignmentId and employeeName are required' });
+    }
+
+    if (!employeeUsername) {
+      return res.status(400).json({ error: 'Authentication required to upload solutions' });
     }
 
     const files = req.files || [];
@@ -139,7 +223,7 @@ app.post('/api/submissions', upload.array('files'), async (req, res) => {
     const compiledContent = await compileSubmissionContent(absolutePaths);
 
     // Initial AI analysis and first chat questions
-    console.log(`Starting AI analysis for submission from: ${employeeName}...`);
+    console.log(`Starting AI analysis for submission from: ${employeeName} (${employeeUsername})...`);
     const aiResult = await aiService.analyzeSubmission(assignment, compiledContent);
     console.log('AI initial analysis finished.');
 
@@ -152,7 +236,7 @@ app.post('/api/submissions', upload.array('files'), async (req, res) => {
       }
     ];
 
-    const submission = await db.createSubmission(assignmentId, employeeName, filePaths);
+    const submission = await db.createSubmission(assignmentId, employeeName, employeeUsername, filePaths);
     await db.updateSubmissionChat(submission.id, initialChat);
     const updatedSubmission = await db.updateSubmissionStatus(submission.id, aiResult.status);
 
@@ -174,6 +258,13 @@ app.post('/api/submissions/:id/chat', async (req, res) => {
     const submission = await db.getSubmission(req.params.id);
     if (!submission) {
       return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    // Auth Filtering: Check if employee owns the submission
+    const userRole = req.headers['x-user-role'];
+    const username = req.headers['x-username'];
+    if (userRole === 'employee' && submission.employee_username !== username) {
+      return res.status(403).json({ error: 'Access Denied: You cannot chat on this submission.' });
     }
 
     if (submission.status === 'Graded') {
@@ -245,6 +336,13 @@ app.post('/api/submissions/:id/finalize', async (req, res) => {
     const submission = await db.getSubmission(req.params.id);
     if (!submission) {
       return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    // Auth Filtering: Check if owner or HR
+    const userRole = req.headers['x-user-role'];
+    const username = req.headers['x-username'];
+    if (userRole === 'employee' && submission.employee_username !== username) {
+      return res.status(403).json({ error: 'Access Denied: You cannot grade this submission.' });
     }
 
     if (submission.status === 'Graded') {

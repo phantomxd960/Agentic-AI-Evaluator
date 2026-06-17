@@ -1263,3 +1263,194 @@ input, textarea, select, button {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Login Overlay Styles */
+.login-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background-image: radial-gradient(circle at 50% 50%, rgba(127, 0, 255, 0.12) 0%, transparent 85%),
+                    radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.08) 0%, var(--bg-primary) 100%);
+  backdrop-filter: blur(24px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.login-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.login-card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-lg);
+  padding: 40px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 242, 254, 0.05);
+  animation: scaleUpReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(30px);
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.login-logo .logo-icon {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 15px var(--color-primary-glow);
+}
+
+.login-logo .logo-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.login-logo .logo-text span {
+  background: linear-gradient(to right, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-tabs {
+  display: flex;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 4px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.login-tab-btn {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 10px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: var(--transition-smooth);
+}
+
+.login-tab-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.12), rgba(127, 0, 255, 0.12));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-primary-glow);
+}
+
+.login-panel {
+  display: none;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.login-panel.active {
+  display: block;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-toggle-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.auth-toggle-hint a {
+  margin-left: 4px;
+}
+
+/* Sidebar profile widgets */
+.sidebar-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--card-border);
+  padding: 12px;
+  border-radius: var(--border-radius-md);
+  margin-top: auto;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.profile-avatar {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px var(--color-primary-glow);
+  flex-shrink: 0;
+}
+
+.profile-avatar svg {
+  color: #fff;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.profile-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-role {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+}
+
+.btn-logout:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
