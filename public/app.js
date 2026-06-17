@@ -1,25 +1,6 @@
 import { initHR, loadHRDashboard } from './hr.js';
 import { initEmployee, loadAssignments } from './employee.js';
-
-// Authentication Session Helpers
-export function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem('currentUser'));
-  } catch (e) {
-    return null;
-  }
-}
-
-export function getAuthHeaders() {
-  const user = getCurrentUser();
-  if (user) {
-    return {
-      'x-user-role': user.role,
-      'x-username': user.username
-    };
-  }
-  return {};
-}
+import { getCurrentUser, getAuthHeaders } from './session.js';
 
 // Central API fetch helper (updated with authorization headers)
 const apiHelper = {

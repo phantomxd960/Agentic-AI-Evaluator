@@ -22,6 +22,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${req.method} ${req.url} | User-Role: ${req.headers['x-user-role'] || 'none'} | Username: ${req.headers['x-username'] || 'none'}`);
+  
+  const originalSend = res.send;
+  res.send = function (body) {
+    console.log(`[HTTP] ${req.method} ${req.url} -> Status: ${res.statusCode}`);
+    return originalSend.apply(res, arguments);
+  };
+  
+  next();
+});
+
 // Configure Multer storage to preserve original file extensions
 const uploadsDir = path.resolve('uploads');
 if (!fs.existsSync(uploadsDir)) {

@@ -1,5 +1,5 @@
 // HR view controller
-import { getAuthHeaders } from './app.js';
+import { getAuthHeaders } from './session.js';
 
 let api = null;
 let currentSubmission = null;

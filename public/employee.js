@@ -1,6 +1,6 @@
 // Employee Portal Controller
 import { simpleMarkdownParser } from './hr.js';
-import { getAuthHeaders, getCurrentUser } from './app.js';
+import { getAuthHeaders, getCurrentUser } from './session.js';
 
 let api = null;
 let selectedFiles = [];
