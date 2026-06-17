@@ -303,27 +303,38 @@
           </div>
         </div>
 
-        <!-- Submissions Log -->
-        <div class="grid-card full-width">
-          <h2>Candidate Submission Log</h2>
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Assignment</th>
-                  <th>Submitted Date</th>
-                  <th>Evaluation Status</th>
-                  <th>Final Grade</th>
-                  <th class="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="hr-submissions-tbody">
-                <tr>
-                  <td colspan="6" class="text-center table-empty">Loading submission log...</td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- HR Dashboard Main Content Grid -->
+        <div class="hr-dashboard-grid">
+          <!-- Left Panel: Published Assignments -->
+          <div class="grid-card">
+            <h2>Published Assignments</h2>
+            <div id="hr-assignments-list" class="hr-assignments-list">
+              <p class="text-center table-empty">Loading assignments...</p>
+            </div>
+          </div>
+
+          <!-- Right Panel: Candidate Submissions Log -->
+          <div class="grid-card">
+            <h2>Candidate Submission Log</h2>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Assignment</th>
+                    <th>Submitted Date</th>
+                    <th>Evaluation Status</th>
+                    <th>Final Grade</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-submissions-tbody">
+                  <tr>
+                    <td colspan="6" class="text-center table-empty">Loading submission log...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>

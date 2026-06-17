@@ -1454,3 +1454,48 @@ input, textarea, select, button {
   background-color: rgba(239, 68, 68, 0.15);
 }
 
+/* HR Dashboard Layout Grid */
+.hr-dashboard-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.hr-assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.hr-assignment-item {
+  background-color: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 14px 16px;
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-smooth);
+}
+
+.hr-assignment-item:hover {
+  border-color: var(--color-primary-glow);
+  background-color: rgba(255, 255, 255, 0.02);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.hr-assignment-item .title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.hr-assignment-item .date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+

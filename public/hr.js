@@ -39,12 +39,45 @@ export function initHR(apiHelper) {
 // Load HR Dashboard data
 export async function loadHRDashboard() {
   try {
-    const submissions = await api.get('/api/submissions');
+    const [submissions, assignments] = await Promise.all([
+      api.get('/api/submissions'),
+      api.get('/api/assignments')
+    ]);
     renderStats(submissions);
     renderSubmissionsTable(submissions);
+    renderAssignmentsList(assignments);
   } catch (err) {
     console.error('Error loading HR data:', err);
   }
+}
+
+// Render Published Assignments List in HR Dashboard
+function renderAssignmentsList(assignments) {
+  const container = document.getElementById('hr-assignments-list');
+  if (!container) return;
+  
+  if (assignments.length === 0) {
+    container.innerHTML = '<p class="text-center table-empty" style="padding:20px 0;">No assignments published yet.</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  assignments.forEach(assign => {
+    const div = document.createElement('div');
+    div.className = 'hr-assignment-item';
+    
+    const date = new Date(assign.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    div.innerHTML = `
+      <div class="title">${escapeHtml(assign.title)}</div>
+      <div class="date">Published on ${date}</div>
+    `;
+    container.appendChild(div);
+  });
 }
 
 // Render Stats Cards
